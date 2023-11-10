@@ -1,0 +1,7 @@
+ols.json
+odinfmt.json
+binout
+!examples/*
+examples/binout/binout0000
+.xmake/
+build/
