@@ -8,6 +8,7 @@ when ODIN_OS == .Windows {
 
 import _c "core:c"
 
+EXTRA_STRING_BUFFER_SIZE :: 80 + 2
 
 d3_word :: u64
 d3plot_thick_shell_con :: d3plot_solid_con
@@ -19,30 +20,15 @@ key_file_callback :: #type proc "c" (
     user_data: rawptr,
 )
 
-AnonymousEnum0 :: enum i32 {
+binout_child_type :: enum u8 {
     BINOUT_FILE,
     BINOUT_FOLDER,
 }
 
 card_parse_type :: enum i32 {
-    CARD_PARSE_INT,
-    CARD_PARSE_FLOAT,
-    CARD_PARSE_STRING,
-}
-
-AnonymousEnum2 :: enum i32 {
-    BINOUT_FILE,
-    BINOUT_FOLDER,
-}
-
-AnonymousEnum3 :: enum i32 {
-    BINOUT_FILE,
-    BINOUT_FOLDER,
-}
-
-AnonymousEnum6 :: enum i32 {
-    BINOUT_FILE,
-    BINOUT_FOLDER,
+    INT,
+    FLOAT,
+    STRING,
 }
 
 path_view_t :: struct {
@@ -67,41 +53,41 @@ binout_file_t :: struct {
 binout_folder_t :: struct {
     type:         u8,
     name:         cstring,
-    children:     rawptr,
+    children:     ^binout_folder_or_file_t,
     num_children: _c.size_t,
 }
 
 binout_directory_t :: struct {
-    children:     ^binout_folder_t,
+    children:     [^]binout_folder_t,
     num_children: _c.size_t,
 }
 
 d3plot_solid_con :: struct {
-    node_indices:   [8]u64,
-    material_index: u64,
+    node_indices:   [8]d3_word,
+    material_index: d3_word,
 }
 
 d3plot_beam_con :: struct {
-    node_indices:           [2]u64,
-    orientation_node_index: u64,
-    null:                   [2]u64,
-    material_index:         u64,
+    node_indices:           [2]d3_word,
+    orientation_node_index: d3_word,
+    null:                   [2]d3_word,
+    material_index:         d3_word,
 }
 
 d3plot_shell_con :: struct {
-    node_indices:   [4]u64,
-    material_index: u64,
+    node_indices:   [4]d3_word,
+    material_index: d3_word,
 }
 
 d3plot_part :: struct {
-    solid_ids:           ^u64,
-    thick_shell_ids:     ^u64,
-    beam_ids:            ^u64,
-    shell_ids:           ^u64,
-    solid_indices:       ^_c.size_t,
-    thick_shell_indices: ^_c.size_t,
-    beam_indices:        ^_c.size_t,
-    shell_indices:       ^_c.size_t,
+    solid_ids:           [^]d3_word,
+    thick_shell_ids:     [^]d3_word,
+    beam_ids:            [^]d3_word,
+    shell_ids:           [^]d3_word,
+    solid_indices:       [^]_c.size_t,
+    thick_shell_indices: [^]_c.size_t,
+    beam_indices:        [^]_c.size_t,
+    shell_indices:       [^]_c.size_t,
     num_solids:          _c.size_t,
     num_thick_shells:    _c.size_t,
     num_beams:           _c.size_t,
@@ -109,12 +95,12 @@ d3plot_part :: struct {
 }
 
 d3plot_tensor :: struct {
-    x:       _c.double,
-    y:       _c.double,
-    z:       _c.double,
-    unamed0: AnonymousUnion84,
-    unamed1: AnonymousUnion85,
-    unamed2: AnonymousUnion86,
+    x:  _c.double,
+    y:  _c.double,
+    z:  _c.double,
+    xy: _c.double,
+    yz: _c.double,
+    zx: _c.double,
 }
 
 d3plot_x_y :: struct {
@@ -129,23 +115,23 @@ d3plot_x_y_xy :: struct {
 }
 
 d3plot_solid :: struct {
-    unamed0: AnonymousUnion87,
-    unamed1: AnonymousUnion88,
-    unamed2: AnonymousUnion89,
+    stress:                   d3plot_tensor,
+    effective_plastic_strain: _c.double,
+    strain:                   d3plot_tensor,
 }
 
 d3plot_surface :: struct {
-    unamed0:           AnonymousUnion90,
-    unamed1:           AnonymousUnion91,
-    history_variables: ^_c.double,
+    stress:                   d3plot_tensor,
+    effective_plastic_strain: _c.double,
+    history_variables:        [^]_c.double,
 }
 
 d3plot_thick_shell :: struct {
-    mid:     d3plot_surface,
-    inner:   d3plot_surface,
-    outer:   d3plot_surface,
-    unamed0: AnonymousUnion92,
-    unamed1: AnonymousUnion93,
+    mid:          d3plot_surface,
+    inner:        d3plot_surface,
+    outer:        d3plot_surface,
+    inner_strain: d3plot_tensor,
+    outer_strain: d3plot_tensor,
 }
 
 d3plot_beam :: struct {
@@ -161,8 +147,8 @@ d3plot_shell :: struct {
     mid:                         d3plot_surface,
     inner:                       d3plot_surface,
     outer:                       d3plot_surface,
-    unamed0:                     AnonymousUnion94,
-    unamed1:                     AnonymousUnion95,
+    inner_strain:                d3plot_tensor,
+    outer_strain:                d3plot_tensor,
     bending_moment:              d3plot_x_y_xy,
     shear_resultant:             d3plot_x_y,
     normal_resultant:            d3plot_x_y_xy,
@@ -172,7 +158,7 @@ d3plot_shell :: struct {
 }
 
 extra_string :: struct {
-    buffer: [82]_c.char,
+    buffer: [EXTRA_STRING_BUFFER_SIZE]_c.char,
     extra:  cstring,
 }
 
@@ -190,19 +176,19 @@ card_t :: struct {
 
 keyword_t :: struct {
     name:      cstring,
-    cards:     ^card_t,
+    cards:     [^]card_t,
     num_cards: _c.size_t,
 }
 
 key_parse_config_t :: struct {
     parse_includes:            _c.int,
     ignore_not_found_includes: _c.int,
-    extra_include_paths:       ^cstring,
+    extra_include_paths:       [^]cstring,
     num_extra_include_paths:   _c.size_t,
 }
 
 key_parse_recursion_t :: struct {
-    include_paths:               ^cstring,
+    include_paths:               [^]cstring,
     num_include_paths:           _c.size_t,
     root_folder:                 cstring,
     extra_include_paths_applied: _c.int,
@@ -211,7 +197,7 @@ key_parse_recursion_t :: struct {
 key_parse_info_t :: struct {
     file_name:         cstring,
     line_number:       _c.size_t,
-    include_paths:     ^cstring,
+    include_paths:     [^]cstring,
     num_include_paths: _c.size_t,
     root_folder:       cstring,
 }
@@ -220,7 +206,7 @@ binout_file :: struct {
     directory:       binout_directory_t,
     files:           rawptr,
     num_files:       _c.size_t,
-    file_errors:     ^cstring,
+    file_errors:     [^]cstring,
     num_file_errors: _c.size_t,
     error_string:    cstring,
 }
@@ -236,56 +222,54 @@ d3_buffer :: struct {
     error_string:          cstring,
 }
 
-AnonymousStruct77 :: struct {
-    ndim:                          u64,
-    numnp:                         u64,
-    nglbv:                         u64,
-    it:                            u64,
-    iu:                            u64,
-    iv:                            u64,
-    ia:                            u64,
-    nummat8:                       u64,
-    nv3d:                          u64,
-    nel2:                          u64,
-    nummat2:                       u64,
-    nv1d:                          u64,
-    nel4:                          u64,
-    nummat4:                       u64,
-    nv2d:                          u64,
-    neiph:                         u64,
-    neips:                         u64,
-    nmsph:                         u64,
-    narbs:                         u64,
-    nelt:                          u64,
-    nummatt:                       u64,
-    nv3dt:                         u64,
-    ioshl:                         [4]u64,
-    ialemat:                       [4]u64,
-    ncfdv1:                        [4]u64,
-    nadapt:                        [4]u64,
-    nmmat:                         [4]u64,
-    nel48:                         [4]u64,
-    nel20:                         [4]u64,
-    nt3d:                          [4]u64,
-    numrbs:                        u64,
+d3_control_data :: struct {
+    ndim:                          d3_word,
+    numnp:                         d3_word,
+    nglbv:                         d3_word,
+    it:                            d3_word,
+    iu:                            d3_word,
+    iv:                            d3_word,
+    ia:                            d3_word,
+    nummat8:                       d3_word,
+    nv3d:                          d3_word,
+    nel2:                          d3_word,
+    nummat2:                       d3_word,
+    nv1d:                          d3_word,
+    nel4:                          d3_word,
+    nummat4:                       d3_word,
+    nv2d:                          d3_word,
+    neiph:                         d3_word,
+    neips:                         d3_word,
+    nmsph:                         d3_word,
+    narbs:                         d3_word,
+    nelt:                          d3_word,
+    nummatt:                       d3_word,
+    nv3dt:                         d3_word,
+    ioshl:                         [4]d3_word,
+    ialemat:                       [4]d3_word,
+    ncfdv1:                        [4]d3_word,
+    nadapt:                        [4]d3_word,
+    nmmat:                         [4]d3_word,
+    nel48:                         [4]d3_word,
+    nel20:                         [4]d3_word,
+    nt3d:                          [4]d3_word,
+    numrbs:                        d3_word,
     nel8:                          i64,
     maxint:                        i64,
-    mdlopt:                        u8,
-    istrn:                         u8,
-    plastic_strain_tensor_written: u8,
-    thermal_strain_tensor_written: u8,
-    element_connectivity_packed:   u8,
+    mdlopt:                        b8,
+    istrn:                         b8,
+    plastic_strain_tensor_written: b8,
+    thermal_strain_tensor_written: b8,
+    element_connectivity_packed:   b8,
 }
 
 d3plot_file :: struct {
-    control_data:  AnonymousStruct169,
-    data_pointers: ^_c.size_t,
+    control_data:  d3_control_data,
+    data_pointers: [^]_c.size_t,
     num_states:    _c.size_t,
     buffer:        d3_buffer,
     error_string:  cstring,
 }
-
-tm :: struct {}
 
 include_transform_t :: struct {
     file_name: cstring,
@@ -315,7 +299,7 @@ transformation_option_t :: struct {
 define_transformation_t :: struct {
     tranid:      i64,
     title:       cstring,
-    options:     ^transformation_option_t,
+    options:     [^]transformation_option_t,
     num_options: _c.size_t,
 }
 
@@ -328,527 +312,6 @@ line_reader_t :: struct {
     buffer_index:   _c.size_t,
     bytes_read:     _c.size_t,
     extra_capacity: _c.size_t,
-}
-
-AnonymousStruct169 :: struct {
-    ndim:                          u64,
-    numnp:                         u64,
-    nglbv:                         u64,
-    it:                            u64,
-    iu:                            u64,
-    iv:                            u64,
-    ia:                            u64,
-    nummat8:                       u64,
-    nv3d:                          u64,
-    nel2:                          u64,
-    nummat2:                       u64,
-    nv1d:                          u64,
-    nel4:                          u64,
-    nummat4:                       u64,
-    nv2d:                          u64,
-    neiph:                         u64,
-    neips:                         u64,
-    nmsph:                         u64,
-    narbs:                         u64,
-    nelt:                          u64,
-    nummatt:                       u64,
-    nv3dt:                         u64,
-    ioshl:                         [4]u64,
-    ialemat:                       [4]u64,
-    ncfdv1:                        [4]u64,
-    nadapt:                        [4]u64,
-    nmmat:                         [4]u64,
-    nel48:                         [4]u64,
-    nel20:                         [4]u64,
-    nt3d:                          [4]u64,
-    numrbs:                        u64,
-    nel8:                          i64,
-    maxint:                        i64,
-    mdlopt:                        u8,
-    istrn:                         u8,
-    plastic_strain_tensor_written: u8,
-    thermal_strain_tensor_written: u8,
-    element_connectivity_packed:   u8,
-}
-
-AnonymousUnion0 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion1 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion2 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion3 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion4 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion5 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion6 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion7 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion8 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion9 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion10 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion11 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion12 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion13 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion14 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion15 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion16 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion17 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion18 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion19 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion20 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion21 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion22 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion23 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion24 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion25 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion26 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion27 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion28 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion29 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion30 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion31 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion32 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion33 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion34 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion35 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion36 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion37 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion38 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion39 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion40 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion41 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion42 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion43 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion44 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion45 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion46 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion47 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion48 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion49 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion50 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion51 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion52 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion53 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion54 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion55 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion56 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion57 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion58 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion59 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion60 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion61 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion62 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion63 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion64 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion65 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion66 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion67 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion68 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion69 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion70 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion71 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion72 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion73 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion74 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion75 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion76 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion77 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion78 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion79 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion80 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion81 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion82 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion83 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion84 :: struct #raw_union {
-    xy: _c.double,
-    yx: _c.double,
-}
-
-AnonymousUnion85 :: struct #raw_union {
-    yz: _c.double,
-    zy: _c.double,
-}
-
-AnonymousUnion86 :: struct #raw_union {
-    zx: _c.double,
-    xz: _c.double,
-}
-
-AnonymousUnion87 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion88 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion89 :: struct #raw_union {
-    epsilon: d3plot_tensor,
-    strain:  d3plot_tensor,
-}
-
-AnonymousUnion90 :: struct #raw_union {
-    sigma:  d3plot_tensor,
-    stress: d3plot_tensor,
-}
-
-AnonymousUnion91 :: struct #raw_union {
-    effective_plastic_strain: _c.double,
-    material_dependent_value: _c.double,
-}
-
-AnonymousUnion92 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion93 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
-}
-
-AnonymousUnion94 :: struct #raw_union {
-    inner_epsilon: d3plot_tensor,
-    inner_strain:  d3plot_tensor,
-}
-
-AnonymousUnion95 :: struct #raw_union {
-    outer_epsilon: d3plot_tensor,
-    outer_strain:  d3plot_tensor,
 }
 
 @(default_calling_convention = "c")
@@ -1050,10 +513,10 @@ foreign dynareadout {
     binout_directory_binary_search_file_insert :: proc(arr: [^]binout_file_t, start_index: _c.size_t, end_index: _c.size_t, value: cstring, found: ^b32) -> _c.size_t ---
 
     @(link_name = "d3_word_binary_search")
-    d3_word_binary_search :: proc(arr: [^]u64, start_index: _c.size_t, end_index: _c.size_t, value: u64) -> _c.size_t ---
+    d3_word_binary_search :: proc(arr: [^]d3_word, start_index: _c.size_t, end_index: _c.size_t, value: d3_word) -> _c.size_t ---
 
     @(link_name = "d3_word_binary_search_insert")
-    d3_word_binary_search_insert :: proc(arr: [^]u64, start_index: _c.size_t, end_index: _c.size_t, value: u64, found: ^b32) -> _c.size_t ---
+    d3_word_binary_search_insert :: proc(arr: [^]d3_word, start_index: _c.size_t, end_index: _c.size_t, value: d3_word, found: ^b32) -> _c.size_t ---
 
     @(link_name = "key_file_binary_search_insert")
     key_file_binary_search_insert :: proc(arr: [^]keyword_t, start_index: _c.size_t, end_index: _c.size_t, value: cstring, found: ^b32) -> _c.size_t ---
@@ -1161,22 +624,22 @@ foreign dynareadout {
     d3plot_close :: proc(plot_file: ^d3plot_file) ---
 
     @(link_name = "d3plot_read_node_ids")
-    d3plot_read_node_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_node_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_read_solid_element_ids")
-    d3plot_read_solid_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_solid_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_read_beam_element_ids")
-    d3plot_read_beam_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_beam_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_read_shell_element_ids")
-    d3plot_read_shell_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_shell_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_read_thick_shell_element_ids")
-    d3plot_read_thick_shell_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_thick_shell_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_read_part_ids")
-    d3plot_read_part_ids :: proc(plot_file: ^d3plot_file, num_parts: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_part_ids :: proc(plot_file: ^d3plot_file, num_parts: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_read_part_titles")
     d3plot_read_part_titles :: proc(plot_file: ^d3plot_file, num_parts: ^_c.size_t) -> [^]cstring ---
@@ -1257,13 +720,13 @@ foreign dynareadout {
     d3plot_read_title :: proc(plot_file: ^d3plot_file) -> cstring ---
 
     @(link_name = "d3plot_read_run_time")
-    d3plot_read_run_time :: proc(plot_file: ^d3plot_file) -> ^tm ---
+    d3plot_read_run_time :: proc(plot_file: ^d3plot_file) -> rawptr ---
 
     @(link_name = "d3plot_read_part")
     d3plot_read_part :: proc(plot_file: ^d3plot_file, part_index: _c.size_t) -> d3plot_part ---
 
     @(link_name = "d3plot_read_part_by_id")
-    d3plot_read_part_by_id :: proc(plot_file: ^d3plot_file, part_id: u64, part_ids: [^]u64 = nil, num_parts: _c.size_t = 0) -> d3plot_part ---
+    d3plot_read_part_by_id :: proc(plot_file: ^d3plot_file, part_id: d3_word, part_ids: [^]d3_word = nil, num_parts: _c.size_t = 0) -> d3plot_part ---
 
     @(link_name = "d3plot_free_part")
     d3plot_free_part :: proc(part: ^d3plot_part) ---
@@ -1275,25 +738,25 @@ foreign dynareadout {
     d3plot_free_thick_shells_state :: proc(thick_shells: ^d3plot_thick_shell) ---
 
     @(link_name = "d3plot_read_all_element_ids")
-    d3plot_read_all_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_read_all_element_ids :: proc(plot_file: ^d3plot_file, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "d3plot_index_for_id")
-    d3plot_index_for_id :: proc(id: u64, ids: [^]u64, num_ids: _c.size_t) -> _c.size_t ---
+    d3plot_index_for_id :: proc(id: d3_word, ids: [^]d3_word, num_ids: _c.size_t) -> _c.size_t ---
 
     @(link_name = "d3plot_part_get_node_ids2")
-    d3plot_part_get_node_ids2 :: proc(plot_file: ^d3plot_file, part: ^d3plot_part, num_part_node_ids: ^_c.size_t, node_ids: [^]u64 = nil, num_nodes: _c.size_t = 0, solid_ids: [^]u64 = nil, num_solids: _c.size_t = 0, beam_ids: [^]u64 = nil, num_beams: _c.size_t = 0, shell_ids: [^]u64 = nil, num_shells: _c.size_t = 0, thick_shell_ids: [^]u64 = nil, num_thick_shells: _c.size_t = 0, solid_cons: [^]d3plot_solid_con = nil, beam_cons: [^]d3plot_beam_con = nil, shell_cons: [^]d3plot_shell_con = nil, thick_shell_cons: [^]d3plot_thick_shell_con = nil) -> [^]u64 ---
+    d3plot_part_get_node_ids2 :: proc(plot_file: ^d3plot_file, part: ^d3plot_part, num_part_node_ids: ^_c.size_t, node_ids: [^]d3_word = nil, num_nodes: _c.size_t = 0, solid_ids: [^]d3_word = nil, num_solids: _c.size_t = 0, beam_ids: [^]d3_word = nil, num_beams: _c.size_t = 0, shell_ids: [^]d3_word = nil, num_shells: _c.size_t = 0, thick_shell_ids: [^]d3_word = nil, num_thick_shells: _c.size_t = 0, solid_cons: [^]d3plot_solid_con = nil, beam_cons: [^]d3plot_beam_con = nil, shell_cons: [^]d3plot_shell_con = nil, thick_shell_cons: [^]d3plot_thick_shell_con = nil) -> [^]d3_word ---
 
     @(link_name = "d3plot_part_get_node_indices2")
-    d3plot_part_get_node_indices2 :: proc(plot_file: ^d3plot_file, part: ^d3plot_part, num_part_node_indices: ^_c.size_t, solid_ids: [^]u64 = nil, num_solids: _c.size_t = 0, beam_ids: [^]u64 = nil, num_beams: _c.size_t = 0, shell_ids: [^]u64 = nil, num_shells: _c.size_t = 0, thick_shell_ids: [^]u64 = nil, num_thick_shells: _c.size_t = 0, solid_cons: [^]d3plot_solid_con = nil, beam_cons: [^]d3plot_beam_con = nil, shell_cons: [^]d3plot_shell_con = nil, thick_shell_cons: [^]d3plot_thick_shell_con = nil) -> [^]u64 ---
+    d3plot_part_get_node_indices2 :: proc(plot_file: ^d3plot_file, part: ^d3plot_part, num_part_node_indices: ^_c.size_t, solid_ids: [^]d3_word = nil, num_solids: _c.size_t = 0, beam_ids: [^]d3_word = nil, num_beams: _c.size_t = 0, shell_ids: [^]d3_word = nil, num_shells: _c.size_t = 0, thick_shell_ids: [^]d3_word = nil, num_thick_shells: _c.size_t = 0, solid_cons: [^]d3plot_solid_con = nil, beam_cons: [^]d3plot_beam_con = nil, shell_cons: [^]d3plot_shell_con = nil, thick_shell_cons: [^]d3plot_thick_shell_con = nil) -> [^]d3_word ---
 
     @(link_name = "d3plot_part_get_num_nodes2")
-    d3plot_part_get_num_nodes2 :: proc(plot_file: ^d3plot_file, part: ^d3plot_part, solid_ids: [^]u64 = nil, num_solids: _c.size_t = 0, beam_ids: [^]u64 = nil, num_beams: _c.size_t = 0, shell_ids: [^]u64 = nil, num_shells: _c.size_t = 0, thick_shell_ids: [^]u64 = nil, num_thick_shells: _c.size_t = 0, solid_cons: [^]d3plot_solid_con = nil, beam_cons: [^]d3plot_beam_con = nil, shell_cons: [^]d3plot_shell_con = nil, thick_shell_cons: [^]d3plot_thick_shell_con = nil) -> _c.size_t ---
+    d3plot_part_get_num_nodes2 :: proc(plot_file: ^d3plot_file, part: ^d3plot_part, solid_ids: [^]d3_word = nil, num_solids: _c.size_t = 0, beam_ids: [^]d3_word = nil, num_beams: _c.size_t = 0, shell_ids: [^]d3_word = nil, num_shells: _c.size_t = 0, thick_shell_ids: [^]d3_word = nil, num_thick_shells: _c.size_t = 0, solid_cons: [^]d3plot_solid_con = nil, beam_cons: [^]d3plot_beam_con = nil, shell_cons: [^]d3plot_shell_con = nil, thick_shell_cons: [^]d3plot_thick_shell_con = nil) -> _c.size_t ---
 
     @(link_name = "d3plot_part_get_num_elements")
     d3plot_part_get_num_elements :: proc(part: ^d3plot_part) -> _c.size_t ---
 
     @(link_name = "d3plot_part_get_all_element_ids")
-    d3plot_part_get_all_element_ids :: proc(part: ^d3plot_part, num_ids: ^_c.size_t) -> [^]u64 ---
+    d3plot_part_get_all_element_ids :: proc(part: ^d3plot_part, num_ids: ^_c.size_t) -> [^]d3_word ---
 
     @(link_name = "key_parse_include_transform")
     key_parse_include_transform :: proc(keyword: ^keyword_t) -> include_transform_t ---
