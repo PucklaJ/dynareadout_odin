@@ -1,6 +1,10 @@
 package dynareadout
 
-foreign import "system:dynareadout"
+when ODIN_OS == .Windows {
+    foreign import "system:dynareadout.lib"
+} else {
+    foreign import "system:dynareadout"
+}
 
 import _c "core:c"
 

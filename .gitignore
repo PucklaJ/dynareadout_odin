@@ -5,3 +5,4 @@ binout
 examples/binout/binout0000
 .xmake/
 build/
+*.exe
