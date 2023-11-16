@@ -7,6 +7,7 @@ when ODIN_OS == .Windows {
 }
 
 import _c "core:c"
+import "core:math/bits"
 
 EXTRA_STRING_BUFFER_SIZE :: 80 + 2
 
@@ -31,6 +32,20 @@ card_parse_type :: enum i32 {
     STRING,
 }
 
+binout_type :: enum u8 {
+    INT8    = 1,
+    INT16   = 2,
+    INT32   = 3,
+    INT64   = 4,
+    UINT8   = 5,
+    UINT16  = 6,
+    UINT32  = 7,
+    UINT64  = 8,
+    FLOAT32 = 9,
+    FLOAT64 = 10,
+    INVALID = bits.U8_MAX,
+}
+
 path_view_t :: struct {
     string: cstring,
     start:  _c.int,
@@ -38,20 +53,20 @@ path_view_t :: struct {
 }
 
 binout_folder_or_file_t :: struct {
-    type: u8,
+    type: binout_child_type,
 }
 
 binout_file_t :: struct {
-    type:       u8,
+    type:       binout_child_type,
     name:       cstring,
-    var_type:   u8,
+    var_type:   binout_type,
     size:       _c.size_t,
     file_index: u8,
     file_pos:   _c.long,
 }
 
 binout_folder_t :: struct {
-    type:         u8,
+    type:         binout_child_type,
     name:         cstring,
     children:     ^binout_folder_or_file_t,
     num_children: _c.size_t,
@@ -366,7 +381,7 @@ foreign dynareadout {
     binout_folder_insert_folder :: proc(dir: ^binout_folder_t, path: ^path_view_t) -> ^binout_folder_t ---
 
     @(link_name = "binout_folder_insert_file")
-    binout_folder_insert_file :: proc(dir: ^binout_folder_t, name: cstring, var_type: u8, size: _c.size_t, file_index: u8, file_pos: _c.long) ---
+    binout_folder_insert_file :: proc(dir: ^binout_folder_t, name: cstring, var_type: binout_type, size: _c.size_t, file_index: u8, file_pos: _c.long) ---
 
     @(link_name = "binout_directory_get_file")
     binout_directory_get_file :: proc(dir: ^binout_directory_t, path: ^path_view_t) -> ^binout_file_t ---
@@ -591,7 +606,7 @@ foreign dynareadout {
     binout_close :: proc(bin_file: ^binout_file) ---
 
     @(link_name = "binout_get_type_id")
-    binout_get_type_id :: proc(bin_file: ^binout_file, path_to_variable: cstring) -> u8 ---
+    binout_get_type_id :: proc(bin_file: ^binout_file, path_to_variable: cstring) -> binout_type ---
 
     @(link_name = "binout_variable_exists")
     binout_variable_exists :: proc(bin_file: ^binout_file, path_to_variable: cstring) -> b32 ---
@@ -609,7 +624,7 @@ foreign dynareadout {
     binout_get_num_timesteps :: proc(bin_file: ^binout_file, path: cstring) -> _c.size_t ---
 
     @(link_name = "binout_simple_path_to_real")
-    binout_simple_path_to_real :: proc(bin_file: ^binout_file, simple: cstring, type_id: ^u8, timed: ^b32) -> cstring ---
+    binout_simple_path_to_real :: proc(bin_file: ^binout_file, simple: cstring, type_id: ^binout_type, timed: ^b32) -> cstring ---
 
     @(link_name = "binout_glob")
     binout_glob :: proc(pattern: cstring, num_files: ^_c.size_t) -> [^]cstring ---
