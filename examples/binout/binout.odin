@@ -14,7 +14,7 @@ main :: proc() {
     }
     defer dro.binout_close(&b)
 
-    type_id: u8
+    type_id: dro.binout_type
     timed: b32
     real := dro.binout_simple_path_to_real(
         &b,
