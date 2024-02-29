@@ -21,11 +21,6 @@ key_file_callback :: #type proc "c" (
     user_data: rawptr,
 )
 
-binout_child_type :: enum u8 {
-    BINOUT_FILE,
-    BINOUT_FOLDER,
-}
-
 card_parse_type :: enum i32 {
     INT,
     FLOAT,
@@ -44,37 +39,6 @@ binout_type :: enum u8 {
     FLOAT32 = 9,
     FLOAT64 = 10,
     INVALID = bits.U8_MAX,
-}
-
-path_view_t :: struct {
-    string: cstring,
-    start:  _c.int,
-    end:    _c.int,
-}
-
-binout_folder_or_file_t :: struct {
-    type: binout_child_type,
-}
-
-binout_file_t :: struct {
-    type:       binout_child_type,
-    name:       cstring,
-    var_type:   binout_type,
-    size:       _c.size_t,
-    file_index: u8,
-    file_pos:   _c.long,
-}
-
-binout_folder_t :: struct {
-    type:         binout_child_type,
-    name:         cstring,
-    children:     ^binout_folder_or_file_t,
-    num_children: _c.size_t,
-}
-
-binout_directory_t :: struct {
-    children:     [^]binout_folder_t,
-    num_children: _c.size_t,
 }
 
 d3plot_solid_con :: struct {
@@ -142,11 +106,14 @@ d3plot_surface :: struct {
 }
 
 d3plot_thick_shell :: struct {
-    mid:          d3plot_surface,
-    inner:        d3plot_surface,
-    outer:        d3plot_surface,
-    inner_strain: d3plot_tensor,
-    outer_strain: d3plot_tensor,
+    mid:                               d3plot_surface,
+    inner:                             d3plot_surface,
+    outer:                             d3plot_surface,
+    add_ips:                           [^]d3plot_surface,
+    inner_strain:                      d3plot_tensor,
+    outer_strain:                      d3plot_tensor,
+    num_history_variables:             _c.size_t,
+    num_additional_integration_points: _c.size_t,
 }
 
 d3plot_beam :: struct {
@@ -159,28 +126,19 @@ d3plot_beam :: struct {
 }
 
 d3plot_shell :: struct {
-    mid:                         d3plot_surface,
-    inner:                       d3plot_surface,
-    outer:                       d3plot_surface,
-    inner_strain:                d3plot_tensor,
-    outer_strain:                d3plot_tensor,
-    bending_moment:              d3plot_x_y_xy,
-    shear_resultant:             d3plot_x_y,
-    normal_resultant:            d3plot_x_y_xy,
-    thickness:                   _c.double,
-    element_dependent_variables: [2]_c.double,
-    internal_energy:             _c.double,
-}
-
-extra_string :: struct {
-    buffer: [EXTRA_STRING_BUFFER_SIZE]_c.char,
-    extra:  cstring,
-}
-
-string_builder_t :: struct {
-    buffer: cstring,
-    ptr:    _c.size_t,
-    cap:    _c.size_t,
+    mid:                               d3plot_surface,
+    inner:                             d3plot_surface,
+    outer:                             d3plot_surface,
+    inner_strain:                      d3plot_tensor,
+    outer_strain:                      d3plot_tensor,
+    bending_moment:                    d3plot_x_y_xy,
+    shear_resultant:                   d3plot_x_y,
+    normal_resultant:                  d3plot_x_y_xy,
+    thickness:                         _c.double,
+    element_dependent_variables:       [2]_c.double,
+    internal_energy:                   _c.double,
+    num_history_variables:             _c.size_t,
+    num_additional_integration_points: _c.size_t,
 }
 
 card_t :: struct {
@@ -200,13 +158,6 @@ key_parse_config_t :: struct {
     ignore_not_found_includes: _c.int,
     extra_include_paths:       [^]cstring,
     num_extra_include_paths:   _c.size_t,
-}
-
-key_parse_recursion_t :: struct {
-    include_paths:               [^]cstring,
-    num_include_paths:           _c.size_t,
-    root_folder:                 cstring,
-    extra_include_paths_applied: _c.int,
 }
 
 key_parse_info_t :: struct {
@@ -238,44 +189,63 @@ d3_buffer :: struct {
 }
 
 d3_control_data :: struct {
-    ndim:                          d3_word,
-    numnp:                         d3_word,
-    nglbv:                         d3_word,
-    it:                            d3_word,
-    iu:                            d3_word,
-    iv:                            d3_word,
-    ia:                            d3_word,
-    nummat8:                       d3_word,
-    nv3d:                          d3_word,
-    nel2:                          d3_word,
-    nummat2:                       d3_word,
-    nv1d:                          d3_word,
-    nel4:                          d3_word,
-    nummat4:                       d3_word,
-    nv2d:                          d3_word,
-    neiph:                         d3_word,
-    neips:                         d3_word,
-    nmsph:                         d3_word,
-    narbs:                         d3_word,
-    nelt:                          d3_word,
-    nummatt:                       d3_word,
-    nv3dt:                         d3_word,
-    ioshl:                         [4]d3_word,
-    ialemat:                       [4]d3_word,
-    ncfdv1:                        [4]d3_word,
-    nadapt:                        [4]d3_word,
-    nmmat:                         [4]d3_word,
-    nel48:                         [4]d3_word,
-    nel20:                         [4]d3_word,
-    nt3d:                          [4]d3_word,
-    numrbs:                        d3_word,
-    nel8:                          i64,
-    maxint:                        i64,
-    mdlopt:                        b8,
-    istrn:                         b8,
-    plastic_strain_tensor_written: b8,
-    thermal_strain_tensor_written: b8,
-    element_connectivity_packed:   b8,
+    ndim:                        d3_word,
+    numnp:                       d3_word,
+    nglbv:                       d3_word,
+    it:                          d3_word,
+    iu:                          d3_word,
+    iv:                          d3_word,
+    ia:                          d3_word,
+    nummat8:                     d3_word,
+    numds:                       d3_word,
+    numst:                       d3_word,
+    nv3d:                        d3_word,
+    nel2:                        d3_word,
+    nummat2:                     d3_word,
+    nv1d:                        d3_word,
+    nel4:                        d3_word,
+    nummat4:                     d3_word,
+    nv2d:                        d3_word,
+    neiph:                       d3_word,
+    neips:                       d3_word,
+    nmsph:                       d3_word,
+    narbs:                       d3_word,
+    nelt:                        d3_word,
+    nummatt:                     d3_word,
+    nv3dt:                       d3_word,
+    ioshl:                       [4]d3_word,
+    ialemat:                     d3_word,
+    ncfdv1:                      d3_word,
+    nadapt:                      d3_word,
+    nmmat:                       d3_word,
+    nel48:                       d3_word,
+    nel20:                       d3_word,
+    nt3d:                        d3_word,
+    nel27:                       d3_word,
+    neipb:                       d3_word,
+    nel21p:                      d3_word,
+    nel15t:                      d3_word,
+    soleng:                      d3_word,
+    nel20t:                      d3_word,
+    nel40p:                      d3_word,
+    nel64:                       d3_word,
+    quadr:                       d3_word,
+    cubic:                       d3_word,
+    tsheng:                      d3_word,
+    nbranch:                     d3_word,
+    penout:                      d3_word,
+    engout:                      d3_word,
+    bemeng:                      d3_word,
+    kineng:                      d3_word,
+    npart:                       d3_word,
+    numrbs:                      d3_word,
+    beamip:                      d3_word,
+    nel8:                        i64,
+    maxint:                      i64,
+    mdlopt:                      b8,
+    istrn:                       b8,
+    iosol:                       [2]b8,
+    element_connectivity_packed: b8,
 }
 
 d3plot_file :: struct {
@@ -318,131 +288,8 @@ define_transformation_t :: struct {
     num_options: _c.size_t,
 }
 
-line_reader_t :: struct {
-    file:           rawptr,
-    line:           extra_string,
-    line_length:    _c.size_t,
-    comment_index:  _c.size_t,
-    buffer:         cstring,
-    buffer_index:   _c.size_t,
-    bytes_read:     _c.size_t,
-    extra_capacity: _c.size_t,
-}
-
 @(default_calling_convention = "c")
 foreign dynareadout {
-
-    @(link_name = "path_move_up")
-    path_move_up :: proc(path: cstring) -> _c.size_t ---
-
-    @(link_name = "path_move_up_real")
-    path_move_up_real :: proc(path: cstring) -> _c.size_t ---
-
-    @(link_name = "path_join")
-    path_join :: proc(lhs: cstring, rhs: cstring) -> cstring ---
-
-    @(link_name = "path_join_real")
-    path_join_real :: proc(lhs: cstring, rhs: cstring) -> cstring ---
-
-    @(link_name = "path_is_file")
-    path_is_file :: proc(path_name: cstring) -> _c.int ---
-
-    @(link_name = "path_is_directory")
-    path_is_directory :: proc(path_name: cstring) -> _c.int ---
-
-    @(link_name = "path_working_directory")
-    path_working_directory :: proc() -> cstring ---
-
-    @(link_name = "path_is_abs")
-    path_is_abs :: proc(path_name: cstring) -> _c.int ---
-
-    @(link_name = "path_get_file_size")
-    path_get_file_size :: proc(path_name: cstring) -> u64 ---
-
-    @(link_name = "path_view_new")
-    path_view_new :: proc(string: cstring) -> path_view_t ---
-
-    @(link_name = "path_view_advance")
-    path_view_advance :: proc(pv: ^path_view_t) -> _c.int ---
-
-    @(link_name = "path_view_strcmp")
-    path_view_strcmp :: proc(pv: ^path_view_t, str: cstring) -> _c.int ---
-
-    @(link_name = "path_view_stralloc")
-    path_view_stralloc :: proc(pv: ^path_view_t) -> cstring ---
-
-    @(link_name = "path_view_print")
-    path_view_print :: proc(pv: ^path_view_t) ---
-
-    @(link_name = "binout_directory_insert_folder")
-    binout_directory_insert_folder :: proc(dir: ^binout_directory_t, path: ^path_view_t) -> ^binout_folder_t ---
-
-    @(link_name = "binout_folder_insert_folder")
-    binout_folder_insert_folder :: proc(dir: ^binout_folder_t, path: ^path_view_t) -> ^binout_folder_t ---
-
-    @(link_name = "binout_folder_insert_file")
-    binout_folder_insert_file :: proc(dir: ^binout_folder_t, name: cstring, var_type: binout_type, size: _c.size_t, file_index: u8, file_pos: _c.long) ---
-
-    @(link_name = "binout_directory_get_file")
-    binout_directory_get_file :: proc(dir: ^binout_directory_t, path: ^path_view_t) -> ^binout_file_t ---
-
-    @(link_name = "binout_folder_get_file")
-    binout_folder_get_file :: proc(dir: ^binout_folder_t, path: ^path_view_t) -> ^binout_file_t ---
-
-    @(link_name = "binout_directory_get_children")
-    binout_directory_get_children :: proc(dir: ^binout_directory_t, path: ^path_view_t, num_children: ^_c.size_t) -> [^]binout_folder_or_file_t ---
-
-    @(link_name = "binout_folder_get_children")
-    binout_folder_get_children :: proc(folder: ^binout_folder_t, path: ^path_view_t, num_children: ^_c.size_t) -> [^]binout_folder_or_file_t ---
-
-    @(link_name = "binout_directory_free")
-    binout_directory_free :: proc(dir: ^binout_directory_t) ---
-
-    @(link_name = "binout_folder_free")
-    binout_folder_free :: proc(folder: ^binout_folder_t) ---
-
-    @(link_name = "extra_string_get")
-    extra_string_get :: proc(str: ^extra_string, index: _c.size_t) -> _c.char ---
-
-    @(link_name = "extra_string_set")
-    extra_string_set :: proc(str: ^extra_string, index: _c.size_t, value: _c.char) ---
-
-    @(link_name = "extra_string_copy")
-    extra_string_copy :: proc(dst: ^extra_string, src: ^extra_string, src_len: _c.size_t, offset: _c.size_t) ---
-
-    @(link_name = "extra_string_copy_to_string")
-    extra_string_copy_to_string :: proc(dst: cstring, src: ^extra_string, dst_len: _c.size_t) ---
-
-    @(link_name = "extra_string_compare")
-    extra_string_compare :: proc(lhs: ^extra_string, rhs: cstring) -> _c.int ---
-
-    @(link_name = "extra_string_starts_with")
-    extra_string_starts_with :: proc(str: ^extra_string, prefix: cstring) -> b32 ---
-
-    @(link_name = "string_builder_new")
-    string_builder_new :: proc() -> string_builder_t ---
-
-    @(link_name = "string_builder_append")
-    string_builder_append :: proc(b: ^string_builder_t, s: cstring) ---
-
-    @(link_name = "string_builder_append_char")
-    string_builder_append_char :: proc(b: ^string_builder_t, c: _c.char) ---
-
-    @(link_name = "string_builder_append_len")
-    string_builder_append_len :: proc(b: ^string_builder_t, s: cstring, l: _c.size_t) ---
-
-    @(link_name = "string_builder_move")
-    string_builder_move :: proc(b: ^string_builder_t) -> cstring ---
-
-    @(link_name = "string_builder_free")
-    string_builder_free :: proc(b: ^string_builder_t) ---
-
-    @(link_name = "string_clone")
-    string_clone :: proc(str: cstring) -> cstring ---
-
-    @(link_name = "string_clone_len")
-    string_clone_len :: proc(str: cstring, len: _c.size_t) -> cstring ---
-
     @(link_name = "key_default_parse_config")
     key_default_parse_config :: proc() -> key_parse_config_t ---
 
@@ -514,30 +361,6 @@ foreign dynareadout {
 
     @(link_name = "card_parse_get_type_width")
     card_parse_get_type_width :: proc(card: ^card_t, value_width: u8) -> card_parse_type ---
-
-    @(link_name = "binout_directory_binary_search_folder")
-    binout_directory_binary_search_folder :: proc(arr: [^]binout_folder_t, start_index: _c.size_t, end_index: _c.size_t, value: ^path_view_t) -> _c.size_t ---
-
-    @(link_name = "binout_directory_binary_search_folder_insert")
-    binout_directory_binary_search_folder_insert :: proc(arr: [^]binout_folder_t, start_index: _c.size_t, end_index: _c.size_t, value: ^path_view_t, found: ^b32) -> _c.size_t ---
-
-    @(link_name = "binout_directory_binary_search_file")
-    binout_directory_binary_search_file :: proc(arr: [^]binout_file_t, start_index: _c.size_t, end_index: _c.size_t, value: ^path_view_t) -> _c.size_t ---
-
-    @(link_name = "binout_directory_binary_search_file_insert")
-    binout_directory_binary_search_file_insert :: proc(arr: [^]binout_file_t, start_index: _c.size_t, end_index: _c.size_t, value: cstring, found: ^b32) -> _c.size_t ---
-
-    @(link_name = "d3_word_binary_search")
-    d3_word_binary_search :: proc(arr: [^]d3_word, start_index: _c.size_t, end_index: _c.size_t, value: d3_word) -> _c.size_t ---
-
-    @(link_name = "d3_word_binary_search_insert")
-    d3_word_binary_search_insert :: proc(arr: [^]d3_word, start_index: _c.size_t, end_index: _c.size_t, value: d3_word, found: ^b32) -> _c.size_t ---
-
-    @(link_name = "key_file_binary_search_insert")
-    key_file_binary_search_insert :: proc(arr: [^]keyword_t, start_index: _c.size_t, end_index: _c.size_t, value: cstring, found: ^b32) -> _c.size_t ---
-
-    @(link_name = "key_file_binary_search")
-    key_file_binary_search :: proc(arr: [^]keyword_t, start_index: _c.size_t, end_index: _c.size_t, value: cstring) -> _c.size_t ---
 
     @(link_name = "binout_read_i8")
     binout_read_i8 :: proc(bin_file: ^binout_file, path_to_variable: cstring, data_size: ^_c.size_t) -> [^]i8 ---
@@ -625,12 +448,6 @@ foreign dynareadout {
 
     @(link_name = "binout_simple_path_to_real")
     binout_simple_path_to_real :: proc(bin_file: ^binout_file, simple: cstring, type_id: ^binout_type, timed: ^b32) -> cstring ---
-
-    @(link_name = "binout_glob")
-    binout_glob :: proc(pattern: cstring, num_files: ^_c.size_t) -> [^]cstring ---
-
-    @(link_name = "binout_free_glob")
-    binout_free_glob :: proc(globed_files: [^]cstring, num_files: _c.size_t) ---
 
     @(link_name = "d3plot_open")
     d3plot_open :: proc(root_file_name: cstring) -> d3plot_file ---
@@ -790,19 +607,5 @@ foreign dynareadout {
 
     @(link_name = "key_free_define_transformation")
     key_free_define_transformation :: proc(dt: ^define_transformation_t) ---
-
-    @(link_name = "_card_try_parse_int")
-    card_try_parse_int :: proc(card: ^card_t, value: ^i64) ---
-
-    @(link_name = "_card_try_parse_float64")
-    card_try_parse_float64 :: proc(card: ^card_t, value: ^_c.double) ---
-
-    @(link_name = "new_line_reader")
-    new_line_reader :: proc(file: rawptr) -> line_reader_t ---
-
-    @(link_name = "read_line")
-    read_line :: proc(lr: ^line_reader_t) -> b32 ---
-
-    @(link_name = "free_line_reader")
-    free_line_reader :: proc(lr: line_reader_t) ---
 }
+
