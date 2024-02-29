@@ -1,6 +1,8 @@
 ols.json
 odinfmt.json
 binout
+d3plot
+d3plot*
 !examples/*
 examples/binout/binout0000
 .xmake/
