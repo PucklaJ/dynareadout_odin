@@ -129,6 +129,7 @@ d3plot_shell :: struct {
     mid:                               d3plot_surface,
     inner:                             d3plot_surface,
     outer:                             d3plot_surface,
+    add_ips:                           [^]d3plot_surface,
     inner_strain:                      d3plot_tensor,
     outer_strain:                      d3plot_tensor,
     bending_moment:                    d3plot_x_y_xy,
@@ -542,7 +543,7 @@ foreign dynareadout {
     d3plot_read_beams_state :: proc(plot_file: ^d3plot_file, state: _c.size_t, num_beams: ^_c.size_t) -> [^]d3plot_beam ---
 
     @(link_name = "d3plot_read_shells_state")
-    d3plot_read_shells_state :: proc(plot_file: ^d3plot_file, state: _c.size_t, num_shells: ^_c.size_t) -> [^]d3plot_shell ---
+    d3plot_read_shells_state :: proc(plot_file: ^d3plot_file, state: _c.size_t, num_shells: ^_c.size_t, num_history_variables: ^_c.size_t) -> [^]d3plot_shell ---
 
     @(link_name = "d3plot_read_solid_elements")
     d3plot_read_solid_elements :: proc(plot_file: ^d3plot_file, num_solids: ^_c.size_t) -> [^]d3plot_solid_con ---
