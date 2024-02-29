@@ -4,6 +4,7 @@ binout
 d3plot
 d3plot*
 !examples/*
+!examples/d3plot/d3plot.odin
 examples/binout/binout0000
 .xmake/
 build/
