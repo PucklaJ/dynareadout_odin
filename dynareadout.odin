@@ -168,6 +168,12 @@ key_parse_info_t :: struct {
     root_folder:       cstring,
 }
 
+@(private)
+binout_directory_t :: struct {
+    children:     rawptr,
+    num_children: _c.size_t,
+}
+
 binout_file :: struct {
     directory:       binout_directory_t,
     files:           rawptr,
@@ -177,6 +183,7 @@ binout_file :: struct {
     error_string:    cstring,
 }
 
+@(private)
 d3_buffer :: struct {
     root_file_name:        cstring,
     root_file_name_length: _c.size_t,
@@ -188,6 +195,7 @@ d3_buffer :: struct {
     error_string:          cstring,
 }
 
+@(private)
 d3_control_data :: struct {
     ndim:                        d3_word,
     numnp:                       d3_word,
@@ -297,7 +305,7 @@ foreign dynareadout {
     key_file_parse :: proc(file_name: cstring, num_keywords: ^_c.size_t, parse_config: ^key_parse_config_t, error_string: ^cstring, warning_string: ^cstring) -> [^]keyword_t ---
 
     @(link_name = "key_file_parse_with_callback")
-    key_file_parse_with_callback :: proc(file_name: cstring, callback: key_file_callback, parse_config: ^key_parse_config_t = nil, error_string: ^cstring = nil, warning_string: ^cstring = nil, user_data: rawptr = nil, rec: ^key_parse_recursion_t = nil) ---
+    key_file_parse_with_callback :: proc(file_name: cstring, callback: key_file_callback, parse_config: ^key_parse_config_t = nil, error_string: ^cstring = nil, warning_string: ^cstring = nil, user_data: rawptr = nil, rec: rawptr = nil) ---
 
     @(link_name = "key_file_free")
     key_file_free :: proc(keywords: [^]keyword_t, num_keywords: _c.size_t) ---
@@ -534,7 +542,7 @@ foreign dynareadout {
     d3plot_read_beams_state :: proc(plot_file: ^d3plot_file, state: _c.size_t, num_beams: ^_c.size_t) -> [^]d3plot_beam ---
 
     @(link_name = "d3plot_read_shells_state")
-    d3plot_read_shells_state :: proc(plot_file: ^d3plot_file, state: _c.size_t, num_shells: ^_c.size_t, num_history_variables: ^_c.size_t) -> [^]d3plot_shell ---
+    d3plot_read_shells_state :: proc(plot_file: ^d3plot_file, state: _c.size_t, num_shells: ^_c.size_t) -> [^]d3plot_shell ---
 
     @(link_name = "d3plot_read_solid_elements")
     d3plot_read_solid_elements :: proc(plot_file: ^d3plot_file, num_solids: ^_c.size_t) -> [^]d3plot_solid_con ---
@@ -559,6 +567,15 @@ foreign dynareadout {
 
     @(link_name = "d3plot_read_part_by_id")
     d3plot_read_part_by_id :: proc(plot_file: ^d3plot_file, part_id: d3_word, part_ids: [^]d3_word = nil, num_parts: _c.size_t = 0) -> d3plot_part ---
+
+    @(link_name = "d3plot_get_shell_mean")
+    d3plot_get_shell_mean :: proc(shell: ^d3plot_shell) -> d3plot_surface ---
+
+    @(link_name = "d3plot_get_thick_shell_mean")
+    d3plot_get_thick_shell_mean :: proc(thick_shell: ^d3plot_thick_shell) -> d3plot_surface ---
+
+    @(link_name = "d3plot_free_surface")
+    d3plot_free_surface :: proc(ip: d3plot_surface) ---
 
     @(link_name = "d3plot_free_part")
     d3plot_free_part :: proc(part: ^d3plot_part) ---
